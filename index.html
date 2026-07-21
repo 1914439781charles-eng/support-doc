@@ -253,7 +253,7 @@
       margin: 16px 0;
     }
 
-    /* ── No Results ── */
+    /* ── No Results / Empty State ── */
     .no-results {
       text-align: center;
       padding: 60px 20px;
@@ -261,6 +261,14 @@
     }
     .no-results-icon { font-size: 48px; margin-bottom: 12px; }
     .no-results-text { font-size: 16px; }
+    .no-results-hint { font-size: 13px; margin-top: 8px; opacity: 0.7; }
+
+    /* ── External-link indicator ── */
+    .card-link-icon {
+      font-size: 14px;
+      margin-left: 4px;
+      vertical-align: middle;
+    }
 
     /* ── Responsive ── */
     @media (max-width: 600px) {
@@ -308,7 +316,40 @@
 
   <script>
     // ── Article Data ──
-    const articles = [];
+    //
+    // Each article supports two modes:
+    //   Mode A — "url" mode: set `url` to point to a Jekyll-rendered HTML page.
+    //            Clicking the card navigates to that page directly.
+    //            Example: url: "how-to/quick-start.html"
+    //
+    //   Mode B — "content" mode: set `content` to inline HTML string.
+    //            Clicking the card opens an overlay panel on this page.
+    //
+    // Both modes require: id, category ("howto" | "troubleshoot"), title, description, keywords.
+    // You may set both `url` and `content`; `url` takes priority.
+    //
+    const articles = [
+      // ── Add your articles below ──
+      // Example (url mode — link to a Jekyll page):
+      // {
+      //   id: "quick-start",
+      //   category: "howto",
+      //   title: "Quick Start Guide",
+      //   description: "Get up and running with the product in minutes.",
+      //   keywords: ["setup", "install", "configuration", "getting started"],
+      //   url: "how-to/quick-start.html"
+      // },
+      //
+      // Example (content mode — inline HTML):
+      // {
+      //   id: "common-issues",
+      //   category: "troubleshoot",
+      //   title: "Common Issues & Solutions",
+      //   description: "Frequently encountered problems and solutions.",
+      //   keywords: ["crash", "permission", "network", "error"],
+      //   content: `<h2>Installation Issues</h2><p>...</p>`
+      // },
+    ];
 
     // ── State ──
     let currentFilter = "all";
@@ -326,17 +367,27 @@
           || a.title.toLowerCase().includes(q)
           || a.description.toLowerCase().includes(q)
           || a.keywords.some(k => k.toLowerCase().includes(q))
-          || a.content.toLowerCase().includes(q);
+          || (a.content && a.content.toLowerCase().includes(q));
         return matchCategory && matchQuery;
       });
 
       countEl.textContent = `${filtered.length} article${filtered.length !== 1 ? "s" : ""} found`;
 
       if (filtered.length === 0) {
+        const isEmpty = articles.length === 0;
         list.innerHTML = `
           <div class="no-results">
-            <div class="no-results-icon">🔎</div>
-            <div class="no-results-text">No articles match your search. Try different keywords or clear the filter.</div>
+            <div class="no-results-icon">${currentQuery ? "🔎" : "📂"}</div>
+            <div class="no-results-text">
+              ${isEmpty
+                ? "No articles yet. Convert your .doc files to .md, add them to the repo, then register them here."
+                : "No articles match your search. Try different keywords or clear the filter."}
+            </div>
+            <div class="no-results-hint">
+              ${isEmpty
+                ? "Workflow: .doc → .md → push to GitHub → add entry to articles array in search.html"
+                : ""}
+            </div>
           </div>
         `;
         return;
@@ -344,7 +395,7 @@
 
       list.innerHTML = filtered.map(a => `
         <div class="card" data-id="${a.id}">
-          <div class="card-title">${a.title}</div>
+          <div class="card-title">${a.title}${a.url ? '<span class="card-link-icon">↗</span>' : ''}</div>
           <div class="card-desc">${a.description}</div>
           <div class="card-tags">
             <span class="tag ${a.category === 'howto' ? 'tag-howto' : 'tag-troubleshoot'}">
@@ -365,6 +416,13 @@
       const a = articles.find(x => x.id === id);
       if (!a) return;
 
+      // url mode → navigate to the Jekyll-rendered page
+      if (a.url) {
+        window.location.href = a.url;
+        return;
+      }
+
+      // content mode → show in overlay
       document.getElementById("overlayTitle").textContent = a.title;
       document.getElementById("overlayMeta").innerHTML = `
         <span class="tag ${a.category === 'howto' ? 'tag-howto' : 'tag-troubleshoot'}">
